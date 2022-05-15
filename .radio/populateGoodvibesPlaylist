@@ -1,0 +1,41 @@
+#!/bin/bash
+
+nUrls=$(sed -n '$=' ./urls)
+nNames=$(sed -n '$=' ./names)
+if [ ! $nUrls -eq $nNames ]; then
+  echo "The number of URLs doesn't equal number of station names. Check file creation."
+  exit
+fi;
+
+# Back up stations.xml.
+#STATIONS_FILE="~/.local/share/goodvibes/stations.xml"
+#STATIONS_BACKUP="~/.local/share/goodvibes/stationsBackup.xml"
+STATIONS_FILE="./stations.xml"
+STATIONS_BACKUP="./stationsBackup.xml"
+if [ ! -e $STATIONS_BACKUP ]; then
+  cp $STATIONS_FILE $STATIONS_BACKUP
+fi
+
+# Delete the last line so we can append all the others.
+LAST_LINE="</Stations>"
+#sed -n '$p' $STATIONS_FILE
+if [ $(sed -n '$p' $STATIONS_FILE) = $LAST_LINE ]; then
+  sed -i '$d' $STATIONS_FILE
+  echo "removed last line, will add it back later"
+fi
+
+# Insert all the new stations.
+for i in $(seq $nUrls); do
+  url=$(sed -n "${i}p" urls)
+  name=$(sed -n "${i}p" names)
+  echo "  <Station>" >> $STATIONS_FILE
+  echo "    <uri>$url</uri>" >> $STATIONS_FILE
+  echo "    <name>$name</name>" >> $STATIONS_FILE
+  echo "  </Station>" >> $STATIONS_FILE
+  #cmd="goodvibes-client add $url $name"  # <-- this was way too buggy and slow
+  #echo $cmd
+  #eval $cmd  # For some reason this wouldn't work when i ran it directly.
+done;
+
+# Reinsert the last line we deleted with sed '$d'
+echo "</Stations>" >> $STATIONS_FILE  

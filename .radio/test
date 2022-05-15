@@ -1,0 +1,19 @@
+#!/bin/bash
+
+nOpts=0
+
+function incrNOpts {
+  nOpts=$(( $nOpts + $1 ))
+}
+
+while getopts "ab:c" opt; do
+  case $opt in
+    a) echo "got a"; incrNOpts 1;;
+    b) echo "got b with arg $OPTARG"; incrNOpts 2;;
+    c) echo "got c"; incrNOpts 1;;
+    *) echo "$opt is not a valid argument.";;
+  esac
+done;
+
+shift $nOpts
+echo $1

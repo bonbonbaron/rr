@@ -1,0 +1,8 @@
+#!/bin/bash
+# Pretty-print stations' SON data into file with jq.
+curl -L http://all.api.radio-browser.info/json/stations | jq '.' > out
+exit
+jq '.[] | .name, .url' out > nameUrls
+#sed -in 's/"//g' nameUrls
+sed -in 's/\\t//g' nameUrls
+sed -in 's/\\n//g' nameUrls

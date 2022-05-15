@@ -1,0 +1,95 @@
+#!/bin/bash
+
+# "rr" stands for "random radio". This script finds a random radio station out of over 32,000!
+# TODO implement a station selection tool. Goodvibes' XML file seems too fragile to accept the
+#      occasional odd strings in my JSON file.
+
+MAX_RAND=32767  # as per the bash docs
+BASE_DIR=/home/bonbonbaron/hack/scripts/.radio
+URLS_FILE=${BASE_DIR}/urls
+NAMES_FILE=${BASE_DIR}/names
+TMP_FILE=${BASE_DIR}/tmp
+HISTORY_FILE=${BASE_DIR}/history
+nOpts=0
+MAX_HISTORY=1000
+addToHistory=0
+
+function incrNOpts {
+  nOpts=$(( $nOpts + $1 ))
+}
+
+# Process options and (optional) arguments. 
+# If no args are provided, a totally random station is selected.
+while getopts "ab:c" opt; do
+  case $opt in
+    # n = No history-logging, please.
+    n) addToHistory=1; incrOpts 1;;
+    # s = Show history 
+    s) cat $HISTORY_FILE;;
+    *) echo "$opt is not a valid argument. Ignoring it instead of dying like a wimp...";;
+  esac
+done;
+
+shift $nOpts
+stationKeyword=$1
+
+# If no station keyword is provided, just pick something totally at random.
+stationName=
+stationUrl=
+if [ -z $stationKeyword ]; then
+  wcOutput=($(wc -l $URLS_FILE))
+  N_LINES=${wcOutput[0]}
+  RANDOM_LINE_NUM=$(($RANDOM * $N_LINES / $MAX_RAND))
+  stationName=$(sed -n "${RANDOM_LINE_NUM}p" $NAMES_FILE)
+  stationUrl=$(sed -n "${RANDOM_LINE_NUM}p" $URLS_FILE)
+else
+  # Store station matching the keyword in temporary file.
+  # Also, quit if no matches were found WITHOUT killing anything already playing. Silence is sad. :(
+  if ! grep -i $stationKeyword ${NAMES_FILE} > $TMP_FILE; then
+    echo "No station matches were found for ${stationKeyword}. Sorry!"
+    exit
+  fi
+  # Select one of the matching records at random.
+  nMatches=($(wc -l $TMP_FILE))
+  echo "$nMatches matches for keyphrase \"$stationKeyword\" found."
+  randomLineNum=$(($RANDOM * $nMatches / $MAX_RAND))
+  if [ $randomLineNum -eq 0 ]; then randomLineNum=1; fi;
+  stationName=$(sed -n "${randomLineNum}p" ${TMP_FILE})
+  # Find line number in original names file in order to extract its corresponding URL.
+  stationNameSafe=$(echo $stationName | sed -En "s/([\[/])/\\\\\1/gp")  # Thanks StackOverflow...
+  if [ -z "$stationNameSafe" ]; then stationNameSafe=$stationName; fi;
+  lineNum=($(sed -nE "/^${stationNameSafe}$/=" $NAMES_FILE))
+  # There's a bug where some stations have identical names, making the above return multiple line numbers.
+  # In that case, for SUPER complete randomness, do another random selection!!!
+  if [ $(echo $lineNum | wc -w) -gt 1 ]; then
+    lnA=($lineNum)  # array of line numbers
+    nNums=${#lnA}
+    lineNum=${lnA[$(( $RANDOM * $nNums / $MAX_RAND ))]}
+    echo "new safe line number is $lineNum out of $nNum identical station name clashes."
+  fi
+  # Get the station's URL.
+  stationUrl=$(sed -n "${lineNum}p" $URLS_FILE)
+  # If it's empty for whatever reason, provide helpful info and die.
+  if [ -z $stationUrl ]; then 
+    echo "Oops, couldn't get station URL. Here's some pertinent information..."
+    echo -e "\tstationNameSafe is $stationNameSafe"
+    echo -e "\tline number is $lineNum"
+    echo -e "\turl is $stationUrl"
+    exit
+  fi
+fi
+# Kill ffplay if it's still playing something.
+if [ -z "$stationName" -o -z "$stationUrl" ]; then
+  echo "Something went wrong in finding match."
+  echo "Station name is ${stationName}, and its URL is ${stationUrl}. So one or the other is empty." #TODO just delete it automatically bro
+  exit
+fi
+
+killall ffplay >/dev/null
+echo "Loading audio stream from station \"${stationName}\", located at ${stationUrl}"
+
+ffplay -loglevel quiet -showmode 1 -i ${stationUrl} &
+if [ $addToHistory ]; then
+  echo "logging to history..."
+  echo "${stationName} ===> ${stationUrl}" >> ${HISTORY_FILE}
+fi
