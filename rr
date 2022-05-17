@@ -5,10 +5,11 @@
 #      occasional odd strings in my JSON file.
 
 MAX_RAND=32767  # as per the bash docs
-BASE_DIR=/home/bonbonbaron/hack/scripts/.radio
+BASE_DIR=/home/bonbonbaron/hack/rr/.radio
 URLS_FILE=${BASE_DIR}/urls
 NAMES_FILE=${BASE_DIR}/names
 TMP_FILE=${BASE_DIR}/tmp
+LOG_FILE=${BASE_DIR}/log
 HISTORY_FILE=${BASE_DIR}/history
 nOpts=0
 MAX_HISTORY=1000
@@ -20,23 +21,28 @@ function incrNOpts {
 
 # Process options and (optional) arguments. 
 # If no args are provided, a totally random station is selected.
-while getopts "ab:c" opt; do
+while getopts "pnks" opt; do
   case $opt in
-    # n = No history-logging, please.
-    n) addToHistory=1; incrOpts 1;;
-    # s = Show history 
-    s) cat $HISTORY_FILE;;
+    n) addToHistory=1; incrOpts 1;;       # n = No history-logging, please.
+    k) killall ffplay >/dev/null; exit;;  # k = kill whatever's playing and quit
+    s) cat $HISTORY_FILE;;                # s = Show history 
+    p) if [ ! -e ${LOG_FILE} ]; then echo "No log file. Is rr even running? Guessing not."; exit; fi
+       if grep -qi title $LOG_FILE; then
+         echo "Currently playing: $(sed -nE 's/.*title\s*(.*)\s*$/\1/gpi' $LOG_FILE)";
+       else echo "Current radio station doesn't provide title of its current playing data. Sorry!"
+       fi;
+       exit;;
     *) echo "$opt is not a valid argument. Ignoring it instead of dying like a wimp...";;
   esac
 done;
 
 shift $nOpts
-stationKeyword=$1
+stationKeyword=${@:1}
 
 # If no station keyword is provided, just pick something totally at random.
 stationName=
 stationUrl=
-if [ -z $stationKeyword ]; then
+if [ -z "$stationKeyword" ]; then
   wcOutput=($(wc -l $URLS_FILE))
   N_LINES=${wcOutput[0]}
   RANDOM_LINE_NUM=$(($RANDOM * $N_LINES / $MAX_RAND))
@@ -45,8 +51,8 @@ if [ -z $stationKeyword ]; then
 else
   # Store station matching the keyword in temporary file.
   # Also, quit if no matches were found WITHOUT killing anything already playing. Silence is sad. :(
-  if ! grep -i $stationKeyword ${NAMES_FILE} > $TMP_FILE; then
-    echo "No station matches were found for ${stationKeyword}. Sorry!"
+  if ! grep -i "$stationKeyword" ${NAMES_FILE} > $TMP_FILE; then
+    echo "No station matches were found for "${stationKeyword}". Sorry!"
     exit
   fi
   # Select one of the matching records at random.
@@ -56,7 +62,7 @@ else
   if [ $randomLineNum -eq 0 ]; then randomLineNum=1; fi;
   stationName=$(sed -n "${randomLineNum}p" ${TMP_FILE})
   # Find line number in original names file in order to extract its corresponding URL.
-  stationNameSafe=$(echo $stationName | sed -En "s/([\[/])/\\\\\1/gp")  # Thanks StackOverflow...
+  stationNameSafe=$(echo $stationName | sed -En "s/([\(\)\[/])/\\\\\1/gp")  # Thanks StackOverflow...
   if [ -z "$stationNameSafe" ]; then stationNameSafe=$stationName; fi;
   lineNum=($(sed -nE "/^${stationNameSafe}$/=" $NAMES_FILE))
   # There's a bug where some stations have identical names, making the above return multiple line numbers.
@@ -85,11 +91,12 @@ if [ -z "$stationName" -o -z "$stationUrl" ]; then
   exit
 fi
 
-killall ffplay >/dev/null
+killall ffplay 2>/dev/null
 echo "Loading audio stream from station \"${stationName}\", located at ${stationUrl}"
 
-ffplay -loglevel quiet -showmode 1 -i ${stationUrl} &
+ffprobe -hide_banner -i ${stationUrl} 2>log & 
+ffplay -i ${stationUrl} -loglevel quiet -nodisp -autoexit  &
 if [ $addToHistory ]; then
-  echo "logging to history..."
+  # echo "logging to history..."
   echo "${stationName} ===> ${stationUrl}" >> ${HISTORY_FILE}
 fi
