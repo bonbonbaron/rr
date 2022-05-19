@@ -5,7 +5,7 @@
 #      occasional odd strings in my JSON file.
 
 MAX_RAND=32767  # as per the bash docs
-BASE_DIR=/home/bonbonbaron/hack/rr/.radio
+BASE_DIR=/home/bonbonbaron/hack/rr
 URLS_FILE=${BASE_DIR}/urls
 NAMES_FILE=${BASE_DIR}/names
 TMP_FILE=${BASE_DIR}/tmp
@@ -57,7 +57,7 @@ else
   fi
   # Select one of the matching records at random.
   nMatches=($(wc -l $TMP_FILE))
-  echo "$nMatches matches for keyphrase \"$stationKeyword\" found."
+  echo "$nMatches match(es) for keyphrase \"$stationKeyword\" found."
   randomLineNum=$(($RANDOM * $nMatches / $MAX_RAND))
   if [ $randomLineNum -eq 0 ]; then randomLineNum=1; fi;
   stationName=$(sed -n "${randomLineNum}p" ${TMP_FILE})
