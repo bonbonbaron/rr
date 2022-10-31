@@ -94,7 +94,7 @@ fi
 killall ffplay 2>/dev/null
 echo "Loading audio stream from station \"${stationName}\", located at ${stationUrl}"
 
-ffprobe -hide_banner -i ${stationUrl} 2>log & 
+ffprobe -hide_banner -i ${stationUrl} 2>${LOG_FILE} & 
 ffplay -i ${stationUrl} -loglevel quiet -nodisp -autoexit  &
 if [ $addToHistory ]; then
   # echo "logging to history..."
