@@ -5,11 +5,11 @@
 #      occasional odd strings in my JSON file.
 
 MAX_RAND=32767  # as per the bash docs
-BASE_DIR=/home/bonbonbaron/hack/rr
+BASE_DIR=$(dirname ${0})
 URLS_FILE=${BASE_DIR}/urls
 NAMES_FILE=${BASE_DIR}/names
 TMP_FILE=${BASE_DIR}/tmp
-LOG_FILE=${BASE_DIR}/log
+CURR_URL_FILE=${BASE_DIR}/currSong
 HISTORY_FILE=${BASE_DIR}/history
 nOpts=0
 MAX_HISTORY=1000
@@ -21,17 +21,22 @@ function incrNOpts {
 
 # Process options and (optional) arguments. 
 # If no args are provided, a totally random station is selected.
-while getopts "pnks" opt; do
+while getopts "lpnks" opt; do
   case $opt in
     n) addToHistory=1; incrOpts 1;;       # n = No history-logging, please.
-    k) killall ffplay >/dev/null; exit;;  # k = kill whatever's playing and quit
+    k) killall ffmpeg >/dev/null; exit;;  # k = kill whatever's playing and quit
     s) cat $HISTORY_FILE;;                # s = Show history 
-    p) if [ ! -e ${LOG_FILE} ]; then echo "No log file. Is rr even running? Guessing not."; exit; fi
-       if grep -qi title $LOG_FILE; then
-         echo "Currently playing: $(sed -nE 's/.*title\s*(.*)\s*$/\1/gpi' $LOG_FILE)";
-       else echo "Current radio station doesn't provide title of its current playing data. Sorry!"
-       fi;
+    p) if [ ! -e ${CURR_URL_FILE} ]; then 
+         echo "No log file. You need to run rr at least once to have a url stored here."; 
+         exit; 
+       fi
+       ffprobe -hide_banner -i $(cat ${CURR_URL_FILE})
        exit;;
+     l) if [ -f ${TMP_FILE} ]; then
+          cat ${TMP_FILE};
+        else echo "No list of stations matching your last query. Either you haven't queried anything yet or there were no matches."
+        fi
+        exit ;;
     *) echo "$opt is not a valid argument. Ignoring it instead of dying like a wimp...";;
   esac
 done;
@@ -91,11 +96,13 @@ if [ -z "$stationName" -o -z "$stationUrl" ]; then
   exit
 fi
 
-killall ffplay 2>/dev/null
+killall ffmpeg 2>/dev/null
 echo "Loading audio stream from station \"${stationName}\", located at ${stationUrl}"
+echo ${stationUrl} > $CURR_URL_FILE
 
-ffprobe -hide_banner -i ${stationUrl} 2>${LOG_FILE} & 
-ffplay -i ${stationUrl} -loglevel quiet -nodisp -autoexit  &
+#ffplay -volume 100 -i ${stationUrl} -loglevel quiet -nodisp -autoexit  &
+nohup ffmpeg -loglevel warning -i ${stationUrl} -f wav -ac 2 -ar 48000 -vn - | aplay 1>/dev/null 2>&1 &
+#ffplay -volume 100 -i ${stationUrl} -nodisp -autoexit  &
 if [ $addToHistory ]; then
   # echo "logging to history..."
   echo "${stationName} ===> ${stationUrl}" >> ${HISTORY_FILE}
