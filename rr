@@ -5,12 +5,12 @@
 #      occasional odd strings in my JSON file.
 
 MAX_RAND=32767  # as per the bash docs
-BASE_DIR=$(dirname ${0})
-URLS_FILE=${BASE_DIR}/urls
-NAMES_FILE=${BASE_DIR}/names
-TMP_FILE=${BASE_DIR}/tmp
-CURR_URL_FILE=${BASE_DIR}/currSong
-HISTORY_FILE=${BASE_DIR}/history
+REPO=$(git rev-parse --show-toplevel)
+URLS_FILE=${REPO}/urls
+NAMES_FILE=${REPO}/names
+TMP_FILE=${REPO}/tmp
+CURR_URL_FILE=${REPO}/currSong
+HISTORY_FILE=${REPO}/history
 nOpts=0
 MAX_HISTORY=1000
 addToHistory=0
