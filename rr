@@ -4,8 +4,8 @@
 # TODO implement a station selection tool. Goodvibes' XML file seems too fragile to accept the
 #      occasional odd strings in my JSON file.
 
+REPO=$(dirname $(readlink -f $0))
 MAX_RAND=32767  # as per the bash docs
-REPO=$(git rev-parse --show-toplevel)
 URLS_FILE=${REPO}/urls
 NAMES_FILE=${REPO}/names
 TMP_FILE=${REPO}/tmp
