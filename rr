@@ -101,7 +101,7 @@ echo "Loading audio stream from station \"${stationName}\", located at ${station
 echo ${stationUrl} > $CURR_URL_FILE
 
 #ffplay -volume 100 -i ${stationUrl} -loglevel quiet -nodisp -autoexit  &
-nohup ffmpeg -loglevel warning -i ${stationUrl} -f wav -ac 2 -ar 48000 -vn - | aplay 1>/dev/null 2>&1 &
+nohup ffmpeg -loglevel warning -i ${stationUrl} -f wav -ac 2 -ar 48000 -vn - 2>/dev/null | aplay 2>/dev/null &
 #ffplay -volume 100 -i ${stationUrl} -nodisp -autoexit  &
 if [ $addToHistory ]; then
   # echo "logging to history..."
