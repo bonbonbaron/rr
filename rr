@@ -10,6 +10,7 @@ URLS_FILE=${REPO}/urls
 NAMES_FILE=${REPO}/names
 TMP_FILE=${REPO}/tmp
 CURR_URL_FILE=${REPO}/currSong
+FAVES_FILE=${REPO}/faves
 HISTORY_FILE=${REPO}/history
 nOpts=0
 MAX_HISTORY=1000
@@ -21,10 +22,11 @@ function incrNOpts {
 
 # Process options and (optional) arguments. 
 # If no args are provided, a totally random station is selected.
-while getopts "lpnks" opt; do
+while getopts "flpnks" opt; do
   case $opt in
     n) addToHistory=1; incrOpts 1;;       # n = No history-logging, please.
     k) killall ffmpeg >/dev/null; exit;;  # k = kill whatever's playing and quit
+    f) cat ${CURR_URL_FILE} >> ${FAVES_FILE}; exit;;
     s) cat $HISTORY_FILE;;                # s = Show history 
     p) if [ ! -e ${CURR_URL_FILE} ]; then 
          echo "No log file. You need to run rr at least once to have a url stored here."; 
@@ -53,6 +55,7 @@ if [ -z "$stationKeyword" ]; then
   RANDOM_LINE_NUM=$(($RANDOM * $N_LINES / $MAX_RAND))
   stationName=$(sed -n "${RANDOM_LINE_NUM}p" $NAMES_FILE)
   stationUrl=$(sed -n "${RANDOM_LINE_NUM}p" $URLS_FILE)
+  o
 else
   # Store station matching the keyword in temporary file.
   # Also, quit if no matches were found WITHOUT killing anything already playing. Silence is sad. :(
